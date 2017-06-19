@@ -1,0 +1,18 @@
+[
+  {
+    "classification": "spark-defaults",
+    "properties": {
+      "spark.driver.memory": "40G",
+      "spark.driver.maxResultSize": "8G",
+      "spark.dynamicAllocation.enabled":"true",
+      "spark.executor.memory":"8g",
+      "spark.serializer":"org.apache.spark.serializer.KryoSerializer",
+      "spark.kryoserializer.buffer.max":"1900m",
+      "spark.python.worker.memory":"2g",
+      "spark.rdd.compress":"true",
+      "spark.rpc.message.maxSize":"512",
+      "spark.executor.extraJavaOptions":"-XX:+UseG1GC",
+      "spark.hadoop.fs.s3a.endpoint":"s3.eu-central-1.amazonaws.com"
+    }
+  }
+]
