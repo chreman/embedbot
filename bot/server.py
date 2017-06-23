@@ -11,25 +11,12 @@ import pickle
 import argparse
 
 from http.client import IncompleteRead
-
-from pyspark import SparkContext, SparkConf
-from pyspark.sql import SparkSession
 from w2vEngine import w2vEngine
-
-
-def init_spark_context():
-    # load spark context
-    sconf = SparkConf().setAppName("embedbot")
-    # IMPORTANT: pass aditional Python modules to each worker
-    sc = SparkContext(conf=sconf)
-    spark = SparkSession(sc)
-    return spark
 
 
 class EmbedBot(object):
     """docstring for EmbedBot"""
-    def __init__(self, spark, configpath, modelpath):
-        self.spark = spark
+    def __init__(self, configpath, modelpath):
         logname = ("EmbedBot.log")
         self.log = logging.getLogger("eb")
         self.log.setLevel('INFO')
@@ -49,7 +36,6 @@ class EmbedBot(object):
         self.config['cachedir'] = "tmp"
         if not os.path.isdir(self.config.get('cachedir')):
             os.makedirs(self.config.get('cachedir'))
-
         self.log.info("Initializing.")
         self.load_state()
         self.load_config()
@@ -83,8 +69,7 @@ class EmbedBot(object):
         self.log.info("State saved.")
 
     def start_engine(self):
-        global w2vengine
-        w2vengine = w2vEngine(self.spark, self.modelpath)
+        self.w2vengine = w2vEngine(self.modelpath)
 
     def connect(self):
         auth = tweepy.OAuthHandler(self.config['api_key'],
@@ -132,6 +117,8 @@ class EmbedBot(object):
                 self.log.info("Not in vocabulary: "+", ".join(not_in_vocab))
                 reply = prefix+" Sorry, "+", ".join(not_in_vocab)+" not in my vocabulary."
                 self.post_tweet(reply, reply_to=mention)
+                self.state['mention_queue'].remove(mention)
+                continue
             reply = self.formulate_reply(prefix, text, query, signs)
             self.log.info("About to post "+reply)
             self.post_tweet(reply, reply_to=mention)
@@ -150,18 +137,19 @@ class EmbedBot(object):
 
     def formulate_reply(self, prefix, text, query, signs):
         if len(query) == 1:
-            result = w2vengine.get_synonyms(query[0], 5)
+            result = self.w2vengine.get_synonyms(query[0], 5)
             result = ", ".join(result)
             reply = "Related terms to "+query[0]+": "+result
         else:
-            result = w2vengine.get_abstractions(query, signs)
+            result = self.w2vengine.get_abstractions(query, signs, 5)
+            result = ", ".join(result)
             reply = " = ".join(["TEST", text, result])
         return " ".join([prefix, reply])
 
     def check_vocabulary(self, query):
         query = [q.replace("-", "") for q in query]
         q = set(query)
-        diff = q.difference(w2vengine.vocabulary)
+        diff = q.difference(self.w2vengine.vocabulary)
         return list(diff)
 
     def _tweet_url(self, tweet):
@@ -214,7 +202,6 @@ if __name__ == '__main__':
     parser.add_argument('--model', dest='modelpath', help='relative or '
                         'absolute path of the model')
     args = parser.parse_args()
-    spark = init_spark_context()
-    bot = EmbedBot(spark, args.configpath, args.modelpath)
+    bot = EmbedBot(args.configpath, args.modelpath)
     bot.initialize()
     bot.run()
