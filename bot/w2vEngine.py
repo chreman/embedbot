@@ -1,10 +1,13 @@
-from pyspark.ml.feature import Word2VecModel
+import pandas as pd
+import numpy as np
 import logging
+
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class w2vEngine(object):
     """docstring for w2vEngine"""
-    def __init__(self, sparksession, modelpath):
+    def __init__(self, modelpath):
         super(w2vEngine, self).__init__()
         logname = ("EmbedBot.log")
         self.log = logging.getLogger("w2vEngine")
@@ -14,32 +17,41 @@ class w2vEngine(object):
         fh = logging.FileHandler(logname)
         fh.setFormatter(formatter)
         self.log.addHandler(fh)
-        self.spark = sparksession
         self.modelpath = modelpath
-        self.model = Word2VecModel.load(modelpath)
-        self.vocabulary = self.get_vocabulary()
+        store = pd.HDFStore(modelpath)
+        df = store.get('df')
+        self.vocabulary = df['word'].tolist()
+        self.log.info("Size of vocabulary: %d" % len(self.vocabulary))
+        self.mat = np.row_stack(df['vector'].tolist())
 
-    def get_vocabulary(self):
-        vocabulary = set()
-        rows = self.model.getVectors().select('word').collect()
-        for row in rows:
-            vocabulary.add(row['word'])
-        self.log.info("Size of vocabulary: %d" % len(vocabulary))
-        return vocabulary
+    def get_synonyms(self, query_term, n):
+        i = self.vocabulary.index(query_term)
+        y = self.mat[i].reshape(1, -1)
+        sims = cosine_similarity(self.mat, y).flatten()
+        best_sims = sims.argsort()
+        best_sims = list(best_sims[-10:-1])
+        best_sims.reverse()
+        results = []
+        for i in best_sims:
+            candidate = self.vocabulary[i]
+            if not candidate.startswith(query_term):
+                if not query_term.startswith(candidate):
+                    results.append(self.vocabulary[i])
+        return results[:n]
 
-    def get_synonyms(self, query, n):
-        syns = self.model.findSynonyms(query, n)
-        return [s['word'] for s in syns.collect()]
-
-    def get_abstractions(self, query_terms, signs):
-        query_df = self.spark.createDataFrame([([q.replace("-", "")],)
-                                              for q in query_terms],
-                                              ["words"])
-        vectors = self.model.transform(query_df)
-        vectors = [r['w2v'] for r in vectors.collect()]
+    def get_abstractions(self, query_terms, signs, n):
+        query_terms = [q.replace("-", "") for q in query_terms]
+        indices = [self.vocabulary.index(q) for q in query_terms]
+        vectors = self.mat[indices]
         query_vectors = [signs[i]*vectors[i] for i in range(len(query_terms))]
-        query_vector = sum(query_vectors)
-        synonyms = self.model.findSynonyms((-1) * query_vector, 5)
-        results = [s['word'] for s in synonyms.collect()]
-        results = [r for r in results if r not in query_terms]
-        return results[0]
+        query_vector = sum(query_vectors).reshape(1, -1)
+        sims = cosine_similarity(self.mat, query_vector).flatten()
+        best_sims = sims.argsort()
+        best_sims = list(best_sims[-10:-1])
+        best_sims.reverse()
+        candidates = [self.vocabulary[i] for i in best_sims]
+        results = []
+        for c in candidates:
+            if not any([c.startswith(q) for q in query_terms]):
+                results.append(c)
+        return results[:n]
