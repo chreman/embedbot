@@ -23,11 +23,6 @@ def main(args):
     logger.info('Beginning workflow')
 
     conf = SparkConf()
-    if (args.awsAccessKeyID and args.awsSecretAccessKey):
-        conf.set("spark.hadoop.fs.s3.awsAccessKeyID",
-                 args.awsAccessKeyID)
-        conf.set("spark.hadoop.fs.s3.awsSecretAccessKey",
-                 args.awsSecretAccessKey)
     sc = SparkContext(conf=conf)
     spark = SparkSession(sc)
 
@@ -71,6 +66,7 @@ def main(args):
     word2Vec = Word2Vec(vectorSize=500, minCount=20,
                         maxIter=args.maxIter, numPartitions=args.numPartitions,
                         windowSize=args.windowSize,
+                        stepSize=args.stepSize,
                         inputCol="words", outputCol="w2v")
 
     w2vpipeline = Pipeline(stages=[
@@ -85,7 +81,8 @@ def main(args):
     w2vmodel = w2vpipeline_model.stages[-1]
     logger.info('Saving model.')
     w2vmodel.save(args.output)
-    logger.info('Applying feature pipeline.')
+
+    # logger.info('Applying feature pipeline.')
     # df = w2vpipeline_model.transform(fulltexts)
 
     logger.info('Ending workflow, shutting down.')
@@ -108,13 +105,13 @@ if __name__ == '__main__':
     parser.add_argument('--windowSize', dest='windowSize',
                         help='size of window for surrounding words, '
                         'default 5', type=int, default=5)
+    parser.add_argument('--stepSize', dest='stepSize',
+                        help='Step size to be used for each iteration of '
+                        'optimization (>= 0), default 0.025',
+                        type=float, default=0.025)
     parser.add_argument('--debug', dest='debug', help='flag for debug mode, '
                         'rdds now evaluated greedy', action='store_true')
     parser.add_argument('--logpath', dest='logpath', help='relative or '
                         'absolute path of the logfile')
-    parser.add_argument('--awsAccessKeyID', dest='awsAccessKeyID',
-                        help='awsAccessKeyID')
-    parser.add_argument('--awsSecretAccessKey', dest='awsSecretAccessKey',
-                        help='awsSecretAccessKey')
     args = parser.parse_args()
     main(args)
