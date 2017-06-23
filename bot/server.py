@@ -12,11 +12,14 @@ import argparse
 
 from http.client import IncompleteRead
 from w2vEngine import w2vEngine
+from daemon import Daemon
+import sys
 
 
-class EmbedBot(object):
+class EmbedBot(Daemon):
     """docstring for EmbedBot"""
-    def __init__(self, configpath, modelpath):
+    def __init__(self, pidfile):
+        super(EmbedBot, self).__init__(pidfile)
         logname = ("EmbedBot.log")
         self.log = logging.getLogger("eb")
         self.log.setLevel('INFO')
@@ -25,12 +28,12 @@ class EmbedBot(object):
         fh = logging.FileHandler(logname)
         fh.setFormatter(formatter)
         self.log.addHandler(fh)
+
+    def initialize(self, configpath, modelpath):
         self.configpath = configpath
         self.modelpath = modelpath
         self.log.info("Configpath: %s" % self.configpath)
         self.log.info("Modelpath: %s" % self.modelpath)
-
-    def initialize(self):
         self.config = {}
         self.config['refresh_interval'] = 120
         self.config['cachedir'] = "tmp"
@@ -196,12 +199,26 @@ class EmbedBot(object):
 
 
 if __name__ == '__main__':
+    bot = EmbedBot('embedbot.pid')
     parser = argparse.ArgumentParser(description='do stuff')
-    parser.add_argument('--config', dest='configpath', help='relative or '
+    parser.add_argument('--command', dest='command', help=''
+                        'usage: start|stop|status|restart')
+    parser.add_argument('--configfile', dest='configfile', help='relative or '
                         'absolute path of the config file')
-    parser.add_argument('--model', dest='modelpath', help='relative or '
+    parser.add_argument('--modelpath', dest='modelpath', help='relative or '
                         'absolute path of the model')
     args = parser.parse_args()
-    bot = EmbedBot(args.configpath, args.modelpath)
-    bot.initialize()
-    bot.run()
+    if 'start' == args.command:
+        print("Trying to start.")
+        bot.initialize(args.configfile, args.modelpath)
+        bot.start()
+    elif 'status' == args.command:
+        bot.status()
+    elif 'stop' == args.command:
+        bot.stop()
+    elif 'restart' == args.command:
+        bot.restart()
+    else:
+        print("Unknown command")
+        sys.exit(2)
+        sys.exit(0)
