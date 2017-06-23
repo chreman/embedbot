@@ -21,7 +21,7 @@ class EmbedBot(Daemon):
     def __init__(self, pidfile):
         super(EmbedBot, self).__init__(pidfile)
         logname = ("EmbedBot.log")
-        self.log = logging.getLogger("eb")
+        self.log = logging.getLogger("embedbot")
         self.log.setLevel('INFO')
         formatter = logging.Formatter('%(asctime)-15s %(name)s '
                                       '[%(levelname)s] %(message)s')
@@ -146,7 +146,7 @@ class EmbedBot(Daemon):
         else:
             result = self.w2vengine.get_abstractions(query, signs, 5)
             result = ", ".join(result)
-            reply = " = ".join(["TEST", text, result])
+            reply = "TEST: "+" = ".join([text, result])
         return " ".join([prefix, reply])
 
     def check_vocabulary(self, query):
