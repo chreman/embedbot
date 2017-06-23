@@ -22,7 +22,8 @@ class NounExtractor(Transformer, HasInputCol, HasOutputCol):
             sentences = nltk.sent_tokenize(fulltext)
             nouns = []
             for sent in sentences:
-                for word, pos in nltk.pos_tag(nltk.tokenize.word_tokenize(sent)):
+                for word, pos in nltk.pos_tag(nltk.tokenize
+                                                  .word_tokenize(sent)):
                     if pos == ('NN' or 'NNP'):
                         nouns.append(word)
             return nouns
