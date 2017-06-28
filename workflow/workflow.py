@@ -38,7 +38,7 @@ def main(args):
     if args.debug:
         df.printSchema()
         df.explain(True)
-    logger.info('Base df created, papers in sample: %d' % df.count())
+    # logger.info('Base df created, papers in sample: %d' % df.count())
 
     #########################
     # SPLITTING DF INTO METADATA AND FULLTEXT
@@ -79,8 +79,10 @@ def main(args):
     logger.info('Fitting feature pipeline.')
     w2vpipeline_model = w2vpipeline.fit(fulltexts)
     w2vmodel = w2vpipeline_model.stages[-1]
+    vectors = w2vmodel.getVectors()
+    vectors.write.save(args.output+"df.parquet")
     logger.info('Saving model.')
-    w2vmodel.save(args.output)
+    # w2vmodel.save(args.output)  # does not work on AWS for unknown reasons
 
     # logger.info('Applying feature pipeline.')
     # df = w2vpipeline_model.transform(fulltexts)
