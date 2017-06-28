@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import logging
+import pickle
+from os import path
 
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -18,11 +20,15 @@ class w2vEngine(object):
         fh.setFormatter(formatter)
         self.log.addHandler(fh)
         self.modelpath = modelpath
-        store = pd.HDFStore(modelpath)
-        df = store.get('df')
-        self.vocabulary = df['word'].tolist()
+        # store = pd.HDFStore(modelpath)
+        # df = store.get('df')
+        with open(path.join(modelpath, "words.pkl"), "rb") as infile:
+            self.vocabulary = pickle.load(infile)
+        # self.vocabulary = df['word'].tolist()
         self.log.info("Size of vocabulary: %d" % len(self.vocabulary))
-        self.mat = np.row_stack(df['vector'].tolist())
+        # self.mat = np.row_stack(df['vector'].tolist())
+        with open(path.join(modelpath, "mat.pkl"), "rb") as infile:
+            self.mat = pickle.load(infile)
 
     def get_synonyms(self, query_term, n):
         i = self.vocabulary.index(query_term)

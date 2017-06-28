@@ -146,7 +146,7 @@ class EmbedBot(Daemon):
         else:
             result = self.w2vengine.get_abstractions(query, signs, 5)
             result = ", ".join(result)
-            reply = "TEST: "+" = ".join([text, result])
+            reply = " = ".join([text, result])
         return " ".join([prefix, reply])
 
     def check_vocabulary(self, query):
