@@ -33,11 +33,6 @@ def main(args):
     words = [r['word'] for r in raw_df.select('word').collect()]
     mat = np.row_stack([r
                         for r in raw_df.select('vector').rdd.toLocalIterator()])
-    # df = raw_df.toPandas()
-    # with open(args.output+"/df.pkl") as outfile:
-    #     pickle.dump(df, outfile)
-    # words = df['word'].tolist()
-    # mat = np.row_stack(df['vector'].tolist())
     with open(args.output+"/words.pkl", "wb") as outfile:
         pickle.dump(words, outfile)
     with open(args.output+"/mat.pkl", "wb") as outfile:

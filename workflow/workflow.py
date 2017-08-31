@@ -5,8 +5,8 @@ import argparse
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline
-from pyspark.ml.feature import RegexTokenizer, Word2Vec, NGram
-from transformers import StringConcatenator, SentTokenizer, ColumnExploder, ColumnSelector
+from pyspark.ml.feature import RegexTokenizer, Word2Vec
+from transformers import StringConcatenator
 
 def main(args):
     logging.basicConfig(level=logging.INFO, datefmt="%Y/%m/%d %H:%M:%S")
@@ -51,30 +51,16 @@ def main(args):
 
     stringconcat = StringConcatenator(inputCols=["abstract", "fulltext"],
                                       outputCol="texts")
-    sentTokenizer = SentTokenizer(inputCol="texts",
-                                  outputCol="sentence_list")
-    cexploder = ColumnExploder(inputCol="sentence_list",
-                               outputCol="sentences")
-    cselector = ColumnSelector(outputCols=["sentences"])
     tokenizer = RegexTokenizer(inputCol="texts",
                                outputCol="words", pattern="\\W")
-    # bigrammer = NGram(n=2, inputCol="words", outputCol="bigrams")
-    # trigrammer = NGram(n=3, inputCol="words", outputCol="trigrams")
-    # stringconcat2 = StringConcatenator(inputCols=["words", "bigrams",
-    #                                                "trigrams"],
-    #                                     outputCol="allgrams")
     word2Vec = Word2Vec(vectorSize=500, minCount=20,
                         maxIter=args.maxIter, numPartitions=args.numPartitions,
                         windowSize=args.windowSize,
                         stepSize=args.stepSize,
                         inputCol="words", outputCol="w2v")
 
-    w2vpipeline = Pipeline(stages=[
-                                   stringconcat,
-                                   # sentTokenizer,
-                                   # cexploder, cselector,
+    w2vpipeline = Pipeline(stages=[stringconcat,
                                    tokenizer,
-                                   # bigrammer, trigrammer, stringconcat2,
                                    word2Vec])
     logger.info('Fitting feature pipeline.')
     w2vpipeline_model = w2vpipeline.fit(fulltexts)
@@ -82,11 +68,6 @@ def main(args):
     vectors = w2vmodel.getVectors()
     vectors.write.save(args.output+"df.parquet")
     logger.info('Saving model.')
-    # w2vmodel.save(args.output)  # does not work on AWS for unknown reasons
-
-    # logger.info('Applying feature pipeline.')
-    # df = w2vpipeline_model.transform(fulltexts)
-
     logger.info('Ending workflow, shutting down.')
     sc.stop()
 
@@ -103,7 +84,7 @@ if __name__ == '__main__':
                         'maximum iterations, default 1', type=int, default=1)
     parser.add_argument('--numPartitions', dest='numPartitions',
                         help='number of partitions in word2vec step, '
-                        'default 10', type=int, default=1)
+                        'default 1', type=int, default=1)
     parser.add_argument('--windowSize', dest='windowSize',
                         help='size of window for surrounding words, '
                         'default 5', type=int, default=5)
@@ -111,8 +92,6 @@ if __name__ == '__main__':
                         help='Step size to be used for each iteration of '
                         'optimization (>= 0), default 0.025',
                         type=float, default=0.025)
-    parser.add_argument('--debug', dest='debug', help='flag for debug mode, '
-                        'rdds now evaluated greedy', action='store_true')
     parser.add_argument('--logpath', dest='logpath', help='relative or '
                         'absolute path of the logfile')
     args = parser.parse_args()

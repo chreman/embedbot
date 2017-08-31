@@ -1,0 +1,10 @@
+{
+  "coll_date":".//pub-date[@pub-type='collection']",
+  "electronicPublicationDate":".//pub-date[@pub-type='epub']",
+  "disciplines":".//article-categories//subj-group[@subj-group-type='Discipline-v2']",
+  "meta_journal":".//journal-meta//*",
+  "meta_article":".//article-meta",
+  "fulltext":".//body//p",
+  "references":".//ref/mixed-citation",
+  "keywordList":".//kwd-group/kwd"
+}
